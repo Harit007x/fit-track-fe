@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export default function FitTrackPage() {
-  const { metrics, lastUpdatedDate, updateMetric, incrementMetric, resetToday, resetAllTime, setLastUpdatedDate } =
+  const { metrics, lastUpdatedDate, incrementMetric, resetToday, resetAllTime, setLastUpdatedDate } =
     useFitTrackStore();
   const { theme, setTheme } = useTheme();
 
