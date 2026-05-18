@@ -10,6 +10,18 @@ const api = axios.create({
   },
 });
 
+// Add a request interceptor to attach the Authorization token for mobile fallback
+api.interceptors.request.use(
+  (config) => {
+    const token = useAuthStore.getState().token;
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // Add a response interceptor to handle common errors
 api.interceptors.response.use(
   (response) => response,

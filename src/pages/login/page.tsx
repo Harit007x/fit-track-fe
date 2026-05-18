@@ -89,7 +89,7 @@ export default function LoginPage() {
       const response = await authService.login(values.email, values.password, values.rememberMe);
 
       if (response.success && response.data) {
-        setAuth(response.data);
+        setAuth(response.data, response.accessToken);
         toast.success("Login successful");
         // Successful login, redirect to fitness tracker
         navigate("/tracker");

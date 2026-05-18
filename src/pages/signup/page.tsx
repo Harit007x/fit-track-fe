@@ -63,7 +63,7 @@ export default function SignupPage() {
       const response = await authService.signup(name, values.email, values.password);
 
       if (response.success && response.data) {
-        setAuth(response.data);
+        setAuth(response.data, response.accessToken);
         toast.success("Account created successfully!");
         navigate("/tracker");
       } else {
