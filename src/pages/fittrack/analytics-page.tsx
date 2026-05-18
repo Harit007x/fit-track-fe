@@ -32,7 +32,7 @@ export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "month">("7d");
   const [dbHistory, setDbHistory] = useState<Record<string, Metrics>>({});
   const [isLoading, setIsLoading] = useState(true);
-
+  console.log("loading =", isLoading);
   // Edit / Add Past Day State
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(format(subDays(new Date(), 1), "yyyy-MM-dd"));
@@ -52,7 +52,7 @@ export default function AnalyticsPage() {
   const handleExportFlexCard = async () => {
     const element = document.getElementById("flex-card-element");
     if (!element) return;
-    
+
     setIsExporting(true);
     try {
       const dataUrl = await toPng(element, {
