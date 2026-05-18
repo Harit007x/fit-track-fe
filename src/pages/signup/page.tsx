@@ -65,7 +65,7 @@ export default function SignupPage() {
       if (response.success && response.data) {
         setAuth(response.data);
         toast.success("Account created successfully!");
-        navigate("/admin/dashboard");
+        navigate("/tracker");
       } else {
         toast.error(response.message || "Signup failed");
       }

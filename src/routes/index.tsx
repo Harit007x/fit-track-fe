@@ -1,10 +1,65 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import FitTrackPage from "@/pages/fittrack/page";
+import LoginPage from "@/pages/login/page";
+import SignupPage from "@/pages/signup/page";
+import AnalyticsPage from "@/pages/fittrack/analytics-page";
+import { useAuthStore } from "@/store/auth-store";
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+};
+
+const AuthRedirect = ({ children }: { children: React.ReactNode }) => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  if (isAuthenticated) {
+    return <Navigate to="/tracker" replace />;
+  }
+  return <>{children}</>;
+};
 
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <FitTrackPage />,
+    element: (
+      <AuthRedirect>
+        <Navigate to="/login" replace />
+      </AuthRedirect>
+    ),
   },
-  // We can keep the admin routes around if needed later, but they are unlinked.
+  {
+    path: "/login",
+    element: (
+      <AuthRedirect>
+        <LoginPage />
+      </AuthRedirect>
+    ),
+  },
+  {
+    path: "/signup",
+    element: (
+      <AuthRedirect>
+        <SignupPage />
+      </AuthRedirect>
+    ),
+  },
+  {
+    path: "/tracker",
+    element: (
+      <ProtectedRoute>
+        <FitTrackPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/analytics",
+    element: (
+      <ProtectedRoute>
+        <AnalyticsPage />
+      </ProtectedRoute>
+    ),
+  },
 ]);

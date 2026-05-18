@@ -1,35 +1,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { metricService } from '@/services/metric.service';
 
-export interface Metrics {
-  calories: number;
-  protein: number;
-  waterGlasses: number;
-  steps: number;
-  distanceKm: number;
-}
-
-export const defaultMetrics: Metrics = {
-  calories: 0,
-  protein: 0,
-  waterGlasses: 0,
-  steps: 0,
-  distanceKm: 0,
-};
-
-export const goalMetrics: Metrics = {
-  calories: 2200,
-  protein: 150,
-  waterGlasses: 8,
-  steps: 8000,
-  distanceKm: 5,
-};
+import { type Metrics, defaultMetrics, goalMetrics } from '@/types/metrics';
+export { goalMetrics, type Metrics };
 
 interface FitTrackState {
   metrics: Metrics;
   lastUpdatedDate: string;
+  isLoading: boolean;
+  fetchTodayMetrics: () => Promise<void>;
   updateMetric: (metric: keyof Metrics, value: number) => void;
   incrementMetric: (metric: keyof Metrics, amount: number) => void;
+  incrementMultipleMetrics: (updates: Partial<Metrics>) => void;
   resetToday: () => void;
   resetAllTime: () => void;
   setLastUpdatedDate: (date: string) => void;
@@ -37,31 +20,88 @@ interface FitTrackState {
 
 export const useFitTrackStore = create<FitTrackState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       metrics: { ...defaultMetrics },
       lastUpdatedDate: new Date().toISOString().split('T')[0],
+      isLoading: false,
 
-      updateMetric: (metric, value) =>
-        set((state) => ({
-          metrics: {
-            ...state.metrics,
-            [metric]: Math.max(0, value), // Prevent negative values
-          },
-        })),
+      fetchTodayMetrics: async () => {
+        set({ isLoading: true });
+        try {
+          const response = await metricService.getTodayMetrics();
+          if (response.success && response.data) {
+            set({ 
+              metrics: {
+                calories: response.data.calories || 0,
+                protein: response.data.protein || 0,
+                waterGlasses: response.data.waterGlasses || 0,
+                steps: response.data.steps || 0,
+                distanceKm: response.data.distanceKm || 0,
+              },
+              lastUpdatedDate: response.data.date
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching today's metrics:", error);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
 
-      incrementMetric: (metric, amount) =>
-        set((state) => ({
-          metrics: {
-            ...state.metrics,
-            [metric]: Math.max(0, state.metrics[metric] + amount),
-          },
-        })),
+      updateMetric: (metric, value) => {
+        const today = new Date().toISOString().split('T')[0];
+        const newMetrics = {
+          ...get().metrics,
+          [metric]: Math.max(0, value),
+        };
+        set({ metrics: newMetrics });
+        
+        // Sync to backend
+        metricService.upsertMetrics(today, { [metric]: Math.max(0, value) });
+      },
 
-      resetToday: () =>
+      incrementMetric: (metric, amount) => {
+        const today = new Date().toISOString().split('T')[0];
+        const newValue = Math.max(0, get().metrics[metric] + amount);
+        const newMetrics = {
+          ...get().metrics,
+          [metric]: newValue,
+        };
+        set({ metrics: newMetrics });
+
+        // Sync to backend
+        metricService.upsertMetrics(today, { [metric]: newValue });
+      },
+
+      incrementMultipleMetrics: (updates) => {
+        const today = new Date().toISOString().split('T')[0];
+        const current = get().metrics;
+        const newMetrics = {
+          ...current,
+          calories: Math.max(0, current.calories + (updates.calories || 0)),
+          protein: Math.max(0, current.protein + (updates.protein || 0)),
+          waterGlasses: Math.max(0, current.waterGlasses + (updates.waterGlasses || 0)),
+          steps: Math.max(0, current.steps + (updates.steps || 0)),
+          distanceKm: Math.max(0, current.distanceKm + (updates.distanceKm || 0)),
+        };
+        set({ metrics: newMetrics });
+
+        const updatedFields: Partial<Metrics> = {};
+        for (const key in updates) {
+          const k = key as keyof Metrics;
+          updatedFields[k] = newMetrics[k];
+        }
+        metricService.upsertMetrics(today, updatedFields);
+      },
+
+      resetToday: () => {
+        const today = new Date().toISOString().split('T')[0];
         set({
           metrics: { ...defaultMetrics },
-          lastUpdatedDate: new Date().toISOString().split('T')[0],
-        }),
+          lastUpdatedDate: today,
+        });
+        metricService.upsertMetrics(today, defaultMetrics);
+      },
 
       resetAllTime: () =>
         set({

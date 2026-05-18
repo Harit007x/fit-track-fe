@@ -91,8 +91,8 @@ export default function LoginPage() {
       if (response.success && response.data) {
         setAuth(response.data);
         toast.success("Login successful");
-        // Successful login, redirect to admin dashboard
-        navigate("/admin/dashboard");
+        // Successful login, redirect to fitness tracker
+        navigate("/tracker");
       } else {
         // Handle error message
         toast.error(response.message || "Login failed");
