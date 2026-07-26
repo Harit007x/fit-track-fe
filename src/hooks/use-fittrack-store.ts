@@ -33,10 +33,10 @@ export const useFitTrackStore = create<FitTrackState>()(
             set({ 
               metrics: {
                 calories: response.data.calories || 0,
+                caloriesBurned: response.data.caloriesBurned || 0,
                 protein: response.data.protein || 0,
                 waterGlasses: response.data.waterGlasses || 0,
                 steps: response.data.steps || 0,
-                distanceKm: response.data.distanceKm || 0,
               },
               lastUpdatedDate: response.data.date
             });
@@ -79,10 +79,10 @@ export const useFitTrackStore = create<FitTrackState>()(
         const newMetrics = {
           ...current,
           calories: Math.max(0, current.calories + (updates.calories || 0)),
+          caloriesBurned: Math.max(0, current.caloriesBurned + (updates.caloriesBurned || 0)),
           protein: Math.max(0, current.protein + (updates.protein || 0)),
           waterGlasses: Math.max(0, current.waterGlasses + (updates.waterGlasses || 0)),
           steps: Math.max(0, current.steps + (updates.steps || 0)),
-          distanceKm: Math.max(0, current.distanceKm + (updates.distanceKm || 0)),
         };
         set({ metrics: newMetrics });
 

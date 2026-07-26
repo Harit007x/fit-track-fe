@@ -38,10 +38,10 @@ export default function AnalyticsPage() {
   const [selectedDate, setSelectedDate] = useState<string>(format(subDays(new Date(), 1), "yyyy-MM-dd"));
   const [editForm, setEditForm] = useState<Metrics>({
     calories: 0,
+    caloriesBurned: 0,
     protein: 0,
     waterGlasses: 0,
     steps: 0,
-    distanceKm: 0,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -103,10 +103,10 @@ export default function AnalyticsPage() {
           response.data.forEach((item: any) => {
             historyMap[item.date] = {
               calories: item.calories,
+              caloriesBurned: item.caloriesBurned,
               protein: item.protein,
               waterGlasses: item.waterGlasses,
               steps: item.steps,
-              distanceKm: item.distanceKm,
             };
           });
           setDbHistory(historyMap);
@@ -126,7 +126,7 @@ export default function AnalyticsPage() {
     if (dbHistory[dateStr]) {
       setEditForm(dbHistory[dateStr]);
     } else {
-      setEditForm({ calories: 0, protein: 0, waterGlasses: 0, steps: 0, distanceKm: 0 });
+      setEditForm({ calories: 0, caloriesBurned: 0, protein: 0, waterGlasses: 0, steps: 0 });
     }
   };
 
@@ -183,10 +183,10 @@ export default function AnalyticsPage() {
         date: format(date, "MMM dd"),
         fullDate: dateStr,
         calories: dayData?.calories || 0,
+        caloriesBurned: dayData?.caloriesBurned || 0,
         protein: dayData?.protein || 0,
         waterGlasses: dayData?.waterGlasses || 0,
         steps: dayData?.steps || 0,
-        distanceKm: dayData?.distanceKm || 0,
       };
     });
   }, [dbHistory, metrics, timeRange]);
@@ -427,11 +427,12 @@ export default function AnalyticsPage() {
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-[#2C2C2E] text-[10px] font-black text-zinc-500 uppercase tracking-wider">
                   <th className="py-3 px-2">Date</th>
-                  <th className="py-3 px-2">Calories</th>
+                  <th className="py-3 px-2">Eaten</th>
+                  <th className="py-3 px-2">Burned</th>
+                  <th className="py-3 px-2">Net</th>
                   <th className="py-3 px-2">Protein</th>
                   <th className="py-3 px-2">Water</th>
                   <th className="py-3 px-2">Steps</th>
-                  <th className="py-3 px-2">Distance</th>
                   <th className="py-3 px-2 text-right">Action</th>
                 </tr>
               </thead>
@@ -445,10 +446,11 @@ export default function AnalyticsPage() {
                       )}
                     </td>
                     <td className="py-3 px-2 text-orange-500 font-black">{row.calories.toLocaleString()} <span className="text-[10px] text-zinc-500 font-normal">kcal</span></td>
+                    <td className="py-3 px-2 text-purple-500 font-black">{row.caloriesBurned.toLocaleString()} <span className="text-[10px] text-zinc-500 font-normal">kcal</span></td>
+                    <td className="py-3 px-2 text-zinc-900 dark:text-white font-black">{(row.calories - row.caloriesBurned).toLocaleString()} <span className="text-[10px] text-zinc-500 font-normal">kcal</span></td>
                     <td className="py-3 px-2 text-red-500 font-black">{row.protein} <span className="text-[10px] text-zinc-500 font-normal">g</span></td>
                     <td className="py-3 px-2 text-blue-400 font-black">{row.waterGlasses} <span className="text-[10px] text-zinc-500 font-normal">gl</span></td>
                     <td className="py-3 px-2 text-green-500 font-black">{row.steps.toLocaleString()}</td>
-                    <td className="py-3 px-2 text-purple-500 font-black">{row.distanceKm.toFixed(1)} <span className="text-[10px] text-zinc-500 font-normal">km</span></td>
                     <td className="py-3 px-2 text-right">
                       <button
                         onClick={() => {
@@ -479,7 +481,6 @@ export default function AnalyticsPage() {
               { icon: "🔥", label: "7 Day Streak", status: "Active" },
               { icon: "⛰️", label: "Peak Step Day", status: "Unlocked" },
               { icon: "💎", label: "Perfect Month", status: "Progressing" },
-              { icon: "🏃", label: "Marathon Distance", status: "Locked" },
             ].map((badge, i) => (
               <div key={i} className="min-w-[120px] flex flex-col items-center p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-center">
                 <div className={cn("text-3xl mb-2", badge.status === "Locked" && "grayscale opacity-40")}>
@@ -521,7 +522,7 @@ export default function AnalyticsPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="edit-calories" className="text-xs font-bold text-orange-500 uppercase tracking-wider">Calories (kcal)</Label>
+                <Label htmlFor="edit-calories" className="text-xs font-bold text-orange-500 uppercase tracking-wider">Eaten (kcal)</Label>
                 <Input
                   id="edit-calories"
                   type="number"
@@ -529,6 +530,18 @@ export default function AnalyticsPage() {
                   value={editForm.calories}
                   onChange={(e) => setEditForm({ ...editForm, calories: Math.max(0, parseInt(e.target.value) || 0) })}
                   className="bg-zinc-100 dark:bg-[#1C1C1E] border-zinc-200 dark:border-[#2C2C2E] font-black text-sm text-zinc-900 dark:text-white focus-visible:ring-orange-500 h-10 px-3"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-burned" className="text-xs font-bold text-purple-500 uppercase tracking-wider">Calories Burned</Label>
+                <Input
+                  id="edit-burned"
+                  type="number"
+                  min="0"
+                  value={editForm.caloriesBurned}
+                  onChange={(e) => setEditForm({ ...editForm, caloriesBurned: Math.max(0, parseInt(e.target.value) || 0) })}
+                  className="bg-zinc-100 dark:bg-[#1C1C1E] border-zinc-200 dark:border-[#2C2C2E] font-black text-sm text-zinc-900 dark:text-white focus-visible:ring-purple-500 h-10 px-3"
                 />
               </div>
 
@@ -567,19 +580,12 @@ export default function AnalyticsPage() {
                   className="bg-zinc-100 dark:bg-[#1C1C1E] border-zinc-200 dark:border-[#2C2C2E] font-black text-sm text-zinc-900 dark:text-white focus-visible:ring-green-500 h-10 px-3"
                 />
               </div>
+            </div>
 
-              <div className="space-y-1.5 col-span-2">
-                <Label htmlFor="edit-distance" className="text-xs font-bold text-purple-500 uppercase tracking-wider">Distance (km)</Label>
-                <Input
-                  id="edit-distance"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={editForm.distanceKm}
-                  onChange={(e) => setEditForm({ ...editForm, distanceKm: Math.max(0, parseFloat(e.target.value) || 0) })}
-                  className="bg-zinc-100 dark:bg-[#1C1C1E] border-zinc-200 dark:border-[#2C2C2E] font-black text-sm text-zinc-900 dark:text-white focus-visible:ring-purple-500 h-10 px-3"
-                />
-              </div>
+            {/* Net calories readout */}
+            <div className="mt-3 flex items-center justify-between rounded-md bg-zinc-100 dark:bg-[#1C1C1E] border border-zinc-200 dark:border-[#2C2C2E] px-3 py-2">
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Net Calories</span>
+              <span className="text-sm font-black text-zinc-900 dark:text-white">{(editForm.calories - editForm.caloriesBurned).toLocaleString()} <span className="text-[10px] text-zinc-500 font-normal">kcal</span></span>
             </div>
 
             <DialogFooter className="pt-4 flex items-center justify-end gap-2">
@@ -642,8 +648,8 @@ export default function AnalyticsPage() {
                 <div className="relative z-10 space-y-1">
                   <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{format(new Date(), "EEEE, MMMM dd, yyyy")}</p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-5xl font-black tracking-tighter text-orange-500">{metrics.calories.toLocaleString()}</span>
-                    <span className="text-xs font-black text-zinc-400 uppercase">/ {goalMetrics.calories} kcal burned</span>
+                    <span className="text-5xl font-black tracking-tighter text-orange-500">{(metrics.calories - metrics.caloriesBurned).toLocaleString()}</span>
+                    <span className="text-xs font-black text-zinc-400 uppercase">/ {goalMetrics.calories} kcal net</span>
                   </div>
                 </div>
 
@@ -662,8 +668,8 @@ export default function AnalyticsPage() {
                     <p className="text-lg font-black text-green-500">{metrics.steps.toLocaleString()} <span className="text-xs font-bold text-zinc-500">steps</span></p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-zinc-400 uppercase">Distance</p>
-                    <p className="text-lg font-black text-purple-500">{metrics.distanceKm.toFixed(1)} <span className="text-xs font-bold text-zinc-500">km</span></p>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase">Eaten / Burned</p>
+                    <p className="text-lg font-black text-orange-500">{metrics.calories.toLocaleString()} <span className="text-purple-500">/ {metrics.caloriesBurned.toLocaleString()}</span> <span className="text-xs font-bold text-zinc-500">kcal</span></p>
                   </div>
                 </div>
 

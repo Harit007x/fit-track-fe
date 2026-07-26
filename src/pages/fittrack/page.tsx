@@ -4,7 +4,8 @@ import { format } from "date-fns";
 import { useFitTrackStore } from "@/hooks/use-fittrack-store";
 import { goalMetrics } from "@/types/metrics";
 import { MetricCard } from "./components/metric-card";
-import { Moon, Sun, TrendingUp, Activity, LogOut, BarChart2, Zap, Plus, Share2, Sparkles, Download, Loader2 } from "lucide-react";
+import { NetCaloriesCard } from "./components/net-calories-card";
+import { Moon, Sun, TrendingUp, Activity, LogOut, BarChart2, Zap, Plus, Share2, Sparkles, Download, Loader2, Trash2, HeartPulse } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
@@ -23,39 +24,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { defaultQuickPresets } from "@/lib/presets";
 import { toPng } from "html-to-image";
 
-
-const defaultQuickPresets = [
-  {
-    icon: "🥤",
-    name: "Whey Protein Shake",
-    description: "+25g protein • +120 kcal",
-    updates: { protein: 25, calories: 120 },
-    color: "border-red-500/30 hover:border-red-500 bg-red-500/5 text-red-500",
-  },
-  {
-    icon: "🍛",
-    name: "Chicken & Rice",
-    description: "+45g protein • +600 kcal",
-    updates: { protein: 45, calories: 600 },
-    color: "border-orange-500/30 hover:border-orange-500 bg-orange-500/5 text-orange-500",
-  },
-  {
-    icon: "💧",
-    name: "Big Water Jug",
-    description: "+3 glasses (750ml)",
-    updates: { waterGlasses: 3 },
-    color: "border-blue-400/30 hover:border-blue-400 bg-blue-400/5 text-blue-400",
-  },
-  {
-    icon: "🏃",
-    name: "5K Morning Run",
-    description: "+5,000 steps • +5.0 km • +350 kcal",
-    updates: { steps: 5000, distanceKm: 5.0, calories: 350 },
-    color: "border-green-500/30 hover:border-green-500 bg-green-500/5 text-green-500",
-  },
-];
 
 const PRESET_THEMES: Record<string, string> = {
   blue: "border-blue-500/30 hover:border-blue-500 bg-blue-500/5 text-blue-500",
@@ -112,7 +83,7 @@ export default function FitTrackPage() {
     name: "",
     icon: "🥤",
     colorTheme: "orange",
-    updates: { calories: 0, protein: 0, waterGlasses: 0, steps: 0, distanceKm: 0 } as any,
+    updates: { calories: 0, caloriesBurned: 0, protein: 0, waterGlasses: 0, steps: 0 } as any,
   });
 
   // Flex Card Export State
@@ -135,11 +106,10 @@ export default function FitTrackPage() {
   // Handle Confetti
   const allGoalsMet = useMemo(() => {
     return (
-      metrics.calories >= goalMetrics.calories &&
+      metrics.calories - metrics.caloriesBurned >= goalMetrics.calories &&
       metrics.protein >= goalMetrics.protein &&
       metrics.waterGlasses >= goalMetrics.waterGlasses &&
-      metrics.steps >= goalMetrics.steps &&
-      metrics.distanceKm >= goalMetrics.distanceKm
+      metrics.steps >= goalMetrics.steps
     );
   }, [metrics]);
 
@@ -176,10 +146,10 @@ export default function FitTrackPage() {
     const updates = newPreset.updates;
     let descArr = [];
     if (updates.calories) descArr.push(`+${updates.calories} kcal`);
+    if (updates.caloriesBurned) descArr.push(`-${updates.caloriesBurned} kcal`);
     if (updates.protein) descArr.push(`+${updates.protein}g`);
     if (updates.waterGlasses) descArr.push(`+${updates.waterGlasses} gl`);
     if (updates.steps) descArr.push(`+${updates.steps} steps`);
-    if (updates.distanceKm) descArr.push(`+${updates.distanceKm} km`);
     const description = descArr.join(" • ") || "Custom Routine";
 
     const created = {
@@ -195,7 +165,15 @@ export default function FitTrackPage() {
     localStorage.setItem("fittrack-presets", JSON.stringify(updated));
     toast.success(`Preset "${newPreset.name}" created successfully! ⚡`);
     setShowAddPresetModal(false);
-    setNewPreset({ name: "", icon: "🥤", colorTheme: "orange", updates: { calories: 0, protein: 0, waterGlasses: 0, steps: 0, distanceKm: 0 } });
+    setNewPreset({ name: "", icon: "🥤", colorTheme: "orange", updates: { calories: 0, caloriesBurned: 0, protein: 0, waterGlasses: 0, steps: 0 } });
+  };
+
+  const handleDeletePreset = (index: number) => {
+    const removed = customPresets[index];
+    const updated = customPresets.filter((_, i) => i !== index);
+    setCustomPresets(updated);
+    localStorage.setItem("fittrack-presets", JSON.stringify(updated));
+    toast.success(`Preset "${removed?.name ?? ""}" deleted 🗑️`);
   };
 
   const handleExportFlexCard = async () => {
@@ -231,12 +209,11 @@ export default function FitTrackPage() {
 
 
   const calculateOverallProgress = () => {
-    const cal = Math.min(1, metrics.calories / goalMetrics.calories);
+    const net = Math.min(1, Math.max(0, metrics.calories - metrics.caloriesBurned) / goalMetrics.calories);
     const pro = Math.min(1, metrics.protein / goalMetrics.protein);
     const wat = Math.min(1, metrics.waterGlasses / goalMetrics.waterGlasses);
     const ste = Math.min(1, metrics.steps / goalMetrics.steps);
-    const dis = Math.min(1, metrics.distanceKm / goalMetrics.distanceKm);
-    return ((cal + pro + wat + ste + dis) / 5) * 100;
+    return ((net + pro + wat + ste) / 4) * 100;
   };
 
   const progress = calculateOverallProgress();
@@ -267,6 +244,13 @@ export default function FitTrackPage() {
             title="Generate Flex Card"
           >
             <Share2 className="h-4 w-4" />
+          </button>
+          <button
+            className="w-8 h-8 rounded bg-zinc-200 dark:bg-[#1C1C1E] flex items-center justify-center border border-zinc-300 dark:border-[#2C2C2E] hover:border-orange-500 text-orange-500 transition-colors cursor-pointer"
+            onClick={() => navigate("/health")}
+            title="Health Lab (Body Metrics & AI Diet Plan)"
+          >
+            <HeartPulse className="h-4 w-4" />
           </button>
           <button
             className="w-8 h-8 rounded bg-zinc-200 dark:bg-[#1C1C1E] flex items-center justify-center border border-zinc-300 dark:border-[#2C2C2E] cursor-pointer"
@@ -350,10 +334,21 @@ export default function FitTrackPage() {
                       toast.success(`Logged: ${preset.name} ⚡`);
                     }}
                     className={cn(
-                      "p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group active:scale-95 shadow-xs",
+                      "relative p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group active:scale-95 shadow-xs",
                       preset.color || "border-zinc-200 dark:border-zinc-800 hover:border-orange-500 bg-white dark:bg-zinc-900"
                     )}
                   >
+                    <button
+                      type="button"
+                      aria-label={`Delete ${preset.name} preset`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeletePreset(i);
+                      }}
+                      className="absolute -top-1.5 -right-1.5 z-10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-red-500 hover:border-red-500 rounded-full p-1 shadow-sm cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-2xl leading-none">{preset.icon}</span>
                       <span
@@ -397,20 +392,12 @@ export default function FitTrackPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <MetricCard
-                title="Calories"
-                emoji="🍽️"
-                value={metrics.calories}
+              <NetCaloriesCard
+                eaten={metrics.calories}
+                burned={metrics.caloriesBurned}
                 goal={goalMetrics.calories}
-                unit="kcal"
-                colorClass="text-orange-500"
-                glowClass="shadow-glow-orange"
-                barColor="bg-orange-500"
-                onIncrement={(amount) => incrementMetric("calories", amount)}
-                quickAddOptions={[
-                  { label: "100", amount: 100 },
-                  { label: "500", amount: 500 },
-                ]}
+                onAddEaten={(amount) => incrementMetric("calories", amount)}
+                onAddBurned={(amount) => incrementMetric("caloriesBurned", amount)}
               />
 
               <MetricCard
@@ -453,20 +440,6 @@ export default function FitTrackPage() {
                 barColor="bg-green-500"
                 onIncrement={(amount) => incrementMetric("steps", amount)}
                 quickAddOptions={[{ label: "500", amount: 500 }]}
-              />
-
-              <MetricCard
-                title="Distance"
-                emoji="🏃‍♀️"
-                value={metrics.distanceKm}
-                goal={goalMetrics.distanceKm}
-                unit="km"
-                colorClass="text-purple-500"
-                glowClass="shadow-glow-purple"
-                barColor="bg-purple-500"
-                onIncrement={(amount) => incrementMetric("distanceKm", amount)}
-                quickAddOptions={[{ label: "1 km", amount: 1 }]}
-                className="sm:col-span-2"
               />
             </div>
           </div>
@@ -556,10 +529,10 @@ export default function FitTrackPage() {
                       const updates = newPreset.updates;
                       const arr = [];
                       if (updates.calories) arr.push(`+${updates.calories} kcal`);
+                      if (updates.caloriesBurned) arr.push(`-${updates.caloriesBurned} kcal`);
                       if (updates.protein) arr.push(`+${updates.protein}g`);
                       if (updates.waterGlasses) arr.push(`+${updates.waterGlasses} gl`);
                       if (updates.steps) arr.push(`+${updates.steps} steps`);
-                      if (updates.distanceKm) arr.push(`+${updates.distanceKm} km`);
                       return arr.join(" • ") || "Custom Routine";
                     })()}
                   </p>
@@ -624,6 +597,14 @@ export default function FitTrackPage() {
                   className="bg-zinc-100 dark:bg-[#1C1C1E] border-zinc-200 dark:border-[#2C2C2E] font-bold text-xs h-10 px-3"
                 />
                 <Input
+                  placeholder="Burned (-kcal)"
+                  type="number"
+                  min="0"
+                  value={newPreset.updates.caloriesBurned || ""}
+                  onChange={(e) => setNewPreset({ ...newPreset, updates: { ...newPreset.updates, caloriesBurned: Number(e.target.value) } })}
+                  className="bg-zinc-100 dark:bg-[#1C1C1E] border-zinc-200 dark:border-[#2C2C2E] font-bold text-xs h-10 px-3"
+                />
+                <Input
                   placeholder="Protein (+g)"
                   type="number"
                   min="0"
@@ -647,17 +628,6 @@ export default function FitTrackPage() {
                   onChange={(e) => setNewPreset({ ...newPreset, updates: { ...newPreset.updates, steps: Number(e.target.value) } })}
                   className="bg-zinc-100 dark:bg-[#1C1C1E] border-zinc-200 dark:border-[#2C2C2E] font-bold text-xs h-10 px-3"
                 />
-                <div className="col-span-2">
-                  <Input
-                    placeholder="Distance (+km)"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={newPreset.updates.distanceKm || ""}
-                    onChange={(e) => setNewPreset({ ...newPreset, updates: { ...newPreset.updates, distanceKm: Number(e.target.value) } })}
-                    className="bg-zinc-100 dark:bg-[#1C1C1E] border-zinc-200 dark:border-[#2C2C2E] font-bold text-xs h-10 px-3"
-                  />
-                </div>
               </div>
             </div>
 
@@ -719,8 +689,8 @@ export default function FitTrackPage() {
                 <div className="relative z-10 space-y-1">
                   <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{format(new Date(), "EEEE, MMMM dd, yyyy")}</p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-5xl font-black tracking-tighter text-orange-500">{metrics.calories.toLocaleString()}</span>
-                    <span className="text-xs font-black text-zinc-400 uppercase">/ {goalMetrics.calories} kcal burned</span>
+                    <span className="text-5xl font-black tracking-tighter text-orange-500">{(metrics.calories - metrics.caloriesBurned).toLocaleString()}</span>
+                    <span className="text-xs font-black text-zinc-400 uppercase">/ {goalMetrics.calories} kcal net</span>
                   </div>
                 </div>
 
@@ -739,8 +709,8 @@ export default function FitTrackPage() {
                     <p className="text-lg font-black text-green-500">{metrics.steps.toLocaleString()} <span className="text-xs font-bold text-zinc-500">steps</span></p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-zinc-400 uppercase">Distance</p>
-                    <p className="text-lg font-black text-purple-500">{metrics.distanceKm.toFixed(1)} <span className="text-xs font-bold text-zinc-500">km</span></p>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase">Eaten / Burned</p>
+                    <p className="text-lg font-black text-orange-500">{metrics.calories.toLocaleString()} <span className="text-purple-500">/ {metrics.caloriesBurned.toLocaleString()}</span> <span className="text-xs font-bold text-zinc-500">kcal</span></p>
                   </div>
                 </div>
 
